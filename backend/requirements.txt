@@ -1,0 +1,22 @@
+# Web Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Web Scraping
+playwright==1.49.1
+
+# Database
+pymongo==4.10.1
+python-dotenv==1.0.1
+
+# Machine Learning
+scikit-learn==1.6.1
+xgboost==3.2.0
+pandas==2.2.3
+numpy>=1.26.4
+
+# Scheduler
+apscheduler==3.10.4
+
+# CORS & HTTP
+httpx==0.28.1
