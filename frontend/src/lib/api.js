@@ -26,6 +26,8 @@ export const getSyncStatus = () => api.get('/sync-status');
 
 export const triggerSync = () => api.post('/trigger-sync');
 
+export const getSyncProgress = () => api.get('/sync-progress');
+
 export const getAutomationLog = () => api.get('/automation-log');
 
 export const getHealth = () => api.get('/health');

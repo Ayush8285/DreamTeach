@@ -24,6 +24,7 @@ app.add_middleware(
 db = Database()
 predictor = VehiclePricePredictor()
 is_syncing = False
+sync_stage = ""
 
 
 def _load_model():
@@ -144,8 +145,9 @@ async def get_sync_status():
 
 async def _run_sync_pipeline():
     """Full pipeline: scrape -> sync -> retrain -> predict -> save model."""
-    global is_syncing, predictor
+    global is_syncing, predictor, sync_stage
     is_syncing = True
+    sync_stage = "scraping"
 
     try:
         # 1) Scrape
@@ -155,17 +157,20 @@ async def _run_sync_pipeline():
         logger.info(f"Pipeline: Scraped {len(vehicles)} vehicles")
 
         # 2) Sync to DB
+        sync_stage = "syncing"
         logger.info("Pipeline: Syncing to database...")
         sync_result = db.sync_vehicles(vehicles)
         logger.info(f"Pipeline: Sync complete - {sync_result}")
 
         # 3) Retrain
+        sync_stage = "training"
         logger.info("Pipeline: Retraining ML model...")
         active_vehicles = db.get_active_vehicles()
         training_result = predictor.train(active_vehicles)
         logger.info(f"Pipeline: Training complete - {training_result}")
 
         # 4) Predict + persist
+        sync_stage = "predicting"
         if predictor.is_trained:
             predictions = predictor.predict_batch(active_vehicles)
             db.update_predicted_prices(predictions)
@@ -185,16 +190,23 @@ async def _run_sync_pipeline():
             )
             logger.info("Pipeline: Model saved to database")
 
+        sync_stage = "done"
         return {
             "scrape_result": {"vehicles_found": len(vehicles)},
             "sync_result": sync_result,
             "training_result": training_result,
         }
     except Exception as e:
+        sync_stage = f"error: {e}"
         logger.error(f"Pipeline error: {e}")
         raise
     finally:
         is_syncing = False
+
+
+@app.get("/sync-progress", tags=["Sync"])
+async def get_sync_progress():
+    return {"is_syncing": is_syncing, "stage": sync_stage}
 
 
 @app.post("/trigger-sync", tags=["Sync"])

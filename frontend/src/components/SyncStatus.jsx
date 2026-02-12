@@ -1,24 +1,62 @@
-import { useState } from 'react';
-import { triggerSync, getAutomationLog } from '../lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { triggerSync, getSyncProgress, getAutomationLog } from '../lib/api';
+
+const STAGES = [
+  { key: 'scraping', label: 'Scraping inventory', icon: '1' },
+  { key: 'syncing', label: 'Syncing to database', icon: '2' },
+  { key: 'training', label: 'Training ML models', icon: '3' },
+  { key: 'predicting', label: 'Generating predictions', icon: '4' },
+];
 
 function SyncStatus({ syncStatus, onSyncComplete }) {
   const [syncing, setSyncing] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [stage, setStage] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+  const [error, setError] = useState('');
   const [autoLog, setAutoLog] = useState(null);
+  const pollRef = useRef(null);
+  const timerRef = useRef(null);
+
+  // Poll /sync-progress every 3s while syncing
+  useEffect(() => {
+    if (!syncing) return;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await getSyncProgress();
+        const { is_syncing, stage: s } = res.data;
+        setStage(s);
+
+        if (!is_syncing && s === 'done') {
+          setSyncing(false);
+          setStage('done');
+          onSyncComplete();
+        } else if (!is_syncing && s.startsWith('error')) {
+          setSyncing(false);
+          setError(s);
+        }
+      } catch {
+        // ignore poll failures
+      }
+    }, 3000);
+
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+
+    return () => {
+      clearInterval(pollRef.current);
+      clearInterval(timerRef.current);
+    };
+  }, [syncing, onSyncComplete]);
 
   const handleSync = async () => {
     setSyncing(true);
-    setMsg('Sync pipeline started... This may take a few minutes.');
+    setStage('scraping');
+    setElapsed(0);
+    setError('');
     try {
       await triggerSync();
-      setMsg('Sync started in background. Refreshing in 30s...');
-      setTimeout(() => {
-        onSyncComplete();
-        setSyncing(false);
-        setMsg('Sync complete! Data refreshed.');
-      }, 30000);
     } catch (err) {
-      setMsg(`Sync error: ${err.response?.data?.detail || err.message}`);
+      setError(err.response?.data?.detail || err.message);
       setSyncing(false);
     }
   };
@@ -32,6 +70,9 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
     }
   };
 
+  const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const stageIdx = STAGES.findIndex(s => s.key === stage);
   const last = syncStatus?.last_sync;
   const history = syncStatus?.history || [];
 
@@ -52,14 +93,63 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
           </div>
         </div>
 
-        {msg && (
-          <div className={`p-3 rounded text-sm ${syncing ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'}`}>
-            {msg}
+        {/* Progress tracker */}
+        {(syncing || stage === 'done') && (
+          <div className="mb-5 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-gray-700">
+                {syncing ? 'Pipeline running...' : 'Pipeline complete!'}
+              </span>
+              <span className="text-xs font-mono text-gray-500">{formatTime(elapsed)}</span>
+            </div>
+
+            <div className="flex items-center gap-1 mb-3">
+              {STAGES.map((s, i) => {
+                const isDone = stageIdx > i || stage === 'done';
+                const isActive = stageIdx === i && syncing;
+                return (
+                  <div key={s.key} className="flex items-center flex-1">
+                    <div className={`w-full h-2 rounded-full transition-all duration-500 ${
+                      isDone ? 'bg-green-500' : isActive ? 'bg-yellow-400 animate-pulse' : 'bg-gray-200'
+                    }`} />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              {STAGES.map((s, i) => {
+                const isDone = stageIdx > i || stage === 'done';
+                const isActive = stageIdx === i && syncing;
+                return (
+                  <div key={s.key} className="text-center">
+                    <div className={`w-7 h-7 rounded-full mx-auto mb-1 flex items-center justify-center text-xs font-bold transition-all duration-500 ${
+                      isDone ? 'bg-green-500 text-white' : isActive ? 'bg-yellow-400 text-yellow-900 animate-pulse' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {isDone ? '\u2713' : s.icon}
+                    </div>
+                    <p className={`text-xs ${isDone ? 'text-green-700 font-medium' : isActive ? 'text-yellow-700 font-medium' : 'text-gray-400'}`}>
+                      {s.label}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {stage === 'done' && (
+              <div className="mt-3 p-2 bg-green-50 rounded text-sm text-green-700 text-center font-medium">
+                Sync complete! Data has been refreshed.
+              </div>
+            )}
           </div>
         )}
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>
+        )}
+
         {last ? (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center p-3 bg-gray-50 rounded">
               <p className="text-xs text-gray-500">Last Sync</p>
               <p className="font-semibold text-sm">{new Date(last.timestamp).toLocaleString()}</p>
