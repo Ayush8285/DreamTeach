@@ -74,7 +74,7 @@ async def get_automation_log():
     history = db.get_sync_history(limit=10)
     for s in history:
         if "timestamp" in s:
-            s["timestamp"] = s["timestamp"].isoformat()
+            s["timestamp"] = s["timestamp"].isoformat() + "Z"
 
     return {
         "scheduler_running": scheduler.running,

@@ -136,9 +136,9 @@ async def get_sync_status():
 
     for s in history:
         if "timestamp" in s:
-            s["timestamp"] = s["timestamp"].isoformat()
+            s["timestamp"] = s["timestamp"].isoformat() + "Z"
     if "timestamp" in last_sync:
-        last_sync["timestamp"] = last_sync["timestamp"].isoformat()
+        last_sync["timestamp"] = last_sync["timestamp"].isoformat() + "Z"
 
     return {"status": "completed", "last_sync": last_sync, "history": history}
 

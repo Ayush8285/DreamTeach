@@ -16,31 +16,47 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
   const [autoLog, setAutoLog] = useState(null);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
+  const failCountRef = useRef(0);
 
-  // Poll /sync-progress every 3s while syncing
+  // Poll /sync-progress every 5s while syncing
   useEffect(() => {
     if (!syncing) return;
+
+    failCountRef.current = 0;
 
     pollRef.current = setInterval(async () => {
       try {
         const res = await getSyncProgress();
         const { is_syncing, stage: s } = res.data;
+        failCountRef.current = 0;
+
+        // Server restarted mid-sync (lost state) — stage is empty, not syncing
+        if (!is_syncing && !s) {
+          setSyncing(false);
+          setError('Sync interrupted — server may have restarted. Check sync history for results.');
+          return;
+        }
+
         setStage(s);
 
         if (!is_syncing && s === 'done') {
           setSyncing(false);
           setStage('done');
           onSyncComplete();
-          // Auto-hide progress bar after 8 seconds
           setTimeout(() => setStage(''), 8000);
         } else if (!is_syncing && s.startsWith('error')) {
           setSyncing(false);
           setError(s);
         }
       } catch {
-        // ignore poll failures
+        failCountRef.current += 1;
+        // After 10 consecutive failures (~50s), stop polling and show error
+        if (failCountRef.current >= 10) {
+          setSyncing(false);
+          setError('Lost connection to server. The sync may still be running — check back in a minute.');
+        }
       }
-    }, 3000);
+    }, 5000);
 
     timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
 
