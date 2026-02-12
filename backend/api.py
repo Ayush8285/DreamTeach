@@ -129,7 +129,7 @@ async def get_vehicle_price_history(vehicle_id: str):
 @app.get("/sync-status", tags=["Sync"])
 async def get_sync_status():
     last_sync = db.get_last_sync()
-    history = db.get_sync_history(limit=5)
+    history = db.get_sync_history(limit=10)
 
     if not last_sync:
         return {"status": "never_synced", "message": "No sync yet.", "last_sync": None, "history": []}

@@ -178,7 +178,7 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
 
       {autoLog && (
         <div className="bg-white rounded-lg shadow p-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Automation Config</h3>
+          <h3 className="font-semibold text-gray-700 mb-4">Automation Log</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className="p-3 bg-gray-50 rounded">
               <p className="text-xs text-gray-500">Scheduler</p>
@@ -199,6 +199,37 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
                   <span className="font-medium">{job.name}</span> — Next: {job.next_run}
                 </div>
               ))}
+            </div>
+          )}
+          {autoLog.sync_history?.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Automated Sync History:</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Timestamp</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Scraped</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-green-600">Added</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-blue-600">Updated</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-red-600">Removed</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Active</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {autoLog.sync_history.map((s, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-4 py-2">{new Date(s.timestamp).toLocaleString()}</td>
+                        <td className="px-4 py-2 text-center">{s.total_scraped}</td>
+                        <td className="px-4 py-2 text-center text-green-600">+{s.added}</td>
+                        <td className="px-4 py-2 text-center text-blue-600">{s.updated}</td>
+                        <td className="px-4 py-2 text-center text-red-600">-{s.removed}</td>
+                        <td className="px-4 py-2 text-center font-medium">{s.total_active}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

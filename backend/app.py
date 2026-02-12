@@ -71,11 +71,16 @@ async def get_automation_log():
             "trigger": str(job.trigger),
         })
 
+    history = db.get_sync_history(limit=10)
+    for s in history:
+        if "timestamp" in s:
+            s["timestamp"] = s["timestamp"].isoformat()
+
     return {
         "scheduler_running": scheduler.running,
         "sync_interval_hours": SYNC_INTERVAL_HOURS,
         "configured_jobs": jobs,
-        "sync_history": db.get_sync_history(limit=10),
+        "sync_history": history,
     }
 
 
