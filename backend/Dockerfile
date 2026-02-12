@@ -9,10 +9,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y nvidia-nccl-cu12 2>/dev/null || true
 
-RUN playwright install chromium
+# Install system deps first, then browser
 RUN playwright install-deps chromium
+RUN playwright install chromium
 
 COPY . .
 
