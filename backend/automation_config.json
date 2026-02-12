@@ -1,0 +1,54 @@
+{
+  "automation_tool": "APScheduler (AsyncIOScheduler)",
+  "description": "Built-in Python scheduler integrated directly into the FastAPI backend. No external tools required.",
+  "trigger": {
+    "type": "IntervalTrigger",
+    "interval_hours": 24,
+    "job_id": "auto_sync",
+    "start": "on_app_startup"
+  },
+  "pipeline_steps": [
+    {
+      "step": 1,
+      "action": "Scrape inventory",
+      "module": "scraper.py",
+      "details": "Playwright headless Chromium scrapes all vehicle listings from Audi West Island"
+    },
+    {
+      "step": 2,
+      "action": "Sync to database",
+      "module": "database.py",
+      "details": "Compare scraped data with MongoDB records — add new vehicles, mark removed as inactive, update price changes"
+    },
+    {
+      "step": 3,
+      "action": "Retrain ML models",
+      "module": "ml_model.py",
+      "details": "Train 4 models (Linear Regression, Random Forest, XGBoost, Gradient Boosting), select best by R² score"
+    },
+    {
+      "step": 4,
+      "action": "Generate predictions",
+      "module": "ml_model.py",
+      "details": "Predict prices for all active vehicles and store results in MongoDB"
+    },
+    {
+      "step": 5,
+      "action": "Save model",
+      "module": "api.py",
+      "details": "Serialize trained model and persist to MongoDB for reuse across restarts"
+    }
+  ],
+  "verification_endpoints": {
+    "automation_log": "GET /automation-log — scheduler status, next run time, sync history",
+    "sync_status": "GET /sync-status — last sync results",
+    "sync_progress": "GET /sync-progress — real-time pipeline stage during sync",
+    "manual_trigger": "POST /trigger-sync — run pipeline on demand"
+  },
+  "keep_alive": {
+    "method": "External cron ping (cron-job.org)",
+    "endpoint": "/health",
+    "interval_minutes": 14,
+    "reason": "Prevents Render free tier from spinning down the service"
+  }
+}

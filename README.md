@@ -63,6 +63,7 @@ DreamTechAISolutions/
 │   ├── config.py           # Config + env vars
 │   ├── requirements.txt
 │   ├── Dockerfile
+│   ├── automation_config.json  # Automation workflow export
 │   └── .env.example
 ├── frontend/
 │   ├── src/
