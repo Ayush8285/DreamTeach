@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
@@ -156,24 +157,24 @@ async def _run_sync_pipeline():
         vehicles = await scraper.scrape_inventory()
         logger.info(f"Pipeline: Scraped {len(vehicles)} vehicles")
 
-        # 2) Sync to DB
+        # 2) Sync to DB (run in thread to avoid blocking event loop)
         sync_stage = "syncing"
         logger.info("Pipeline: Syncing to database...")
-        sync_result = db.sync_vehicles(vehicles)
+        sync_result = await asyncio.to_thread(db.sync_vehicles, vehicles)
         logger.info(f"Pipeline: Sync complete - {sync_result}")
 
-        # 3) Retrain
+        # 3) Retrain (run in thread — CPU-heavy)
         sync_stage = "training"
         logger.info("Pipeline: Retraining ML model...")
-        active_vehicles = db.get_active_vehicles()
-        training_result = predictor.train(active_vehicles)
+        active_vehicles = await asyncio.to_thread(db.get_active_vehicles)
+        training_result = await asyncio.to_thread(predictor.train, active_vehicles)
         logger.info(f"Pipeline: Training complete - {training_result}")
 
-        # 4) Predict + persist
+        # 4) Predict + persist (run in thread)
         sync_stage = "predicting"
         if predictor.is_trained:
-            predictions = predictor.predict_batch(active_vehicles)
-            db.update_predicted_prices(predictions)
+            predictions = await asyncio.to_thread(predictor.predict_batch, active_vehicles)
+            await asyncio.to_thread(db.update_predicted_prices, predictions)
             logger.info(f"Pipeline: Updated {len(predictions)} predictions")
 
             model_data = predictor.serialize()
