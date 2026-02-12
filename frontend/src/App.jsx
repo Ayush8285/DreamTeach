@@ -141,7 +141,7 @@ function App() {
       </main>
 
       <footer className="bg-black text-gray-500 text-center py-4 text-xs mt-8">
-        DreamTech AI Solutions &mdash; Audi West Island Inventory System v1.0.0
+        Made by Ayush &mdash; Audi West Island Inventory System v1.0.0
       </footer>
     </div>
   );

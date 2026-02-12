@@ -53,7 +53,7 @@ async def root():
     return {
         "name": "Audi West Island Inventory API",
         "version": "1.0.0",
-        "company": "DreamTech AI Solutions",
+        "author": "Ayush",
         "target": TARGET_URL,
         "docs": "/docs",
     }

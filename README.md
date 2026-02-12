@@ -1,6 +1,6 @@
 # Audi West Island — Inventory Scraping, Database Sync & ML Price Prediction
 
-**DreamTech AI Solutions — Hiring Assignment**
+**Built by Ayush**
 
 End-to-end data pipeline that scrapes used car inventory from [Audi West Island](https://www.audiwestisland.com/fr/inventaire/occasion/), stores it in MongoDB, and uses ML to predict vehicle prices. Includes a React dashboard for visualization.
 
@@ -258,4 +258,4 @@ scheduler.start()
 
 ---
 
-Built for DreamTech AI Solutions
+Built by Ayush
