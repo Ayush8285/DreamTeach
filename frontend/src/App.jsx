@@ -22,9 +22,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const searchActive = useRef(false);
+  const initialLoad = useRef(true);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (initialLoad.current) setLoading(true);
     setError(null);
     try {
       const [vehiclesRes, statsRes, syncRes, mlRes] = await Promise.allSettled([
@@ -46,6 +47,7 @@ function App() {
       console.error(err);
     } finally {
       setLoading(false);
+      initialLoad.current = false;
     }
   }, []);
 

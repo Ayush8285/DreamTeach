@@ -31,6 +31,8 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
           setSyncing(false);
           setStage('done');
           onSyncComplete();
+          // Auto-hide progress bar after 8 seconds
+          setTimeout(() => setStage(''), 8000);
         } else if (!is_syncing && s.startsWith('error')) {
           setSyncing(false);
           setError(s);

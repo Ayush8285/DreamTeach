@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function getDealTag(diff) {
   if (diff == null) return null;
@@ -13,6 +13,9 @@ function VehicleTable({ vehicles }) {
   const [sortDir, setSortDir] = useState('asc');
   const [page, setPage] = useState(1);
   const perPage = 15;
+
+  // Reset to page 1 when vehicles data changes
+  useEffect(() => setPage(1), [vehicles]);
 
   const handleSort = (field) => {
     if (sortField === field) {
