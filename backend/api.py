@@ -144,7 +144,7 @@ async def get_sync_status():
     return {"status": "completed", "last_sync": last_sync, "history": history}
 
 
-async def _run_sync_pipeline():
+async def _run_sync_pipeline(source: str = "manual"):
     """Full pipeline: scrape -> sync -> retrain -> predict -> save model."""
     global is_syncing, predictor, sync_stage
     is_syncing = True
@@ -160,7 +160,7 @@ async def _run_sync_pipeline():
         # 2) Sync to DB (run in thread to avoid blocking event loop)
         sync_stage = "syncing"
         logger.info("Pipeline: Syncing to database...")
-        sync_result = await asyncio.to_thread(db.sync_vehicles, vehicles)
+        sync_result = await asyncio.to_thread(db.sync_vehicles, vehicles, source)
         logger.info(f"Pipeline: Sync complete - {sync_result}")
 
         # 3) Retrain (run in thread — CPU-heavy)

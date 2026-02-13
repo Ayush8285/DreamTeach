@@ -16,7 +16,7 @@ async def scheduled_sync():
     """Runs every 24 hours to keep inventory fresh."""
     logger.info("=== Automated 24-hour sync triggered ===")
     try:
-        result = await _run_sync_pipeline()
+        result = await _run_sync_pipeline(source="scheduled")
         logger.info(f"Automated sync complete: {result}")
     except Exception as e:
         logger.error(f"Automated sync failed: {e}")
@@ -71,7 +71,7 @@ async def get_automation_log():
             "trigger": str(job.trigger),
         })
 
-    history = db.get_sync_history(limit=10)
+    history = db.get_sync_history(limit=10, source="scheduled")
     for s in history:
         if "timestamp" in s:
             s["timestamp"] = s["timestamp"].isoformat() + "Z"

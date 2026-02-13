@@ -8,6 +8,97 @@ const STAGES = [
   { key: 'predicting', label: 'Generating predictions', icon: '4' },
 ];
 
+function SyncDetailRow({ sync }) {
+  const [open, setOpen] = useState(false);
+  const hasDetails = sync.updated_details?.length > 0 || sync.removed_details?.length > 0 || sync.added_details?.length > 0;
+
+  return (
+    <>
+      <tr className={`hover:bg-gray-50 ${hasDetails ? 'cursor-pointer' : ''}`} onClick={() => hasDetails && setOpen(!open)}>
+        <td className="px-4 py-2">
+          {hasDetails && <span className="mr-1 text-gray-400">{open ? '\u25BC' : '\u25B6'}</span>}
+          {new Date(sync.timestamp).toLocaleString()}
+        </td>
+        <td className="px-4 py-2 text-center">{sync.total_scraped}</td>
+        <td className="px-4 py-2 text-center text-green-600">+{sync.added}</td>
+        <td className="px-4 py-2 text-center text-blue-600">{sync.updated}</td>
+        <td className="px-4 py-2 text-center text-red-600">-{sync.removed}</td>
+        <td className="px-4 py-2 text-center font-medium">{sync.total_active}</td>
+      </tr>
+      {open && (
+        <tr>
+          <td colSpan={6} className="px-4 py-3 bg-gray-50">
+            <div className="space-y-3 text-xs">
+              {sync.added_details?.length > 0 && (
+                <div>
+                  <p className="font-semibold text-green-700 mb-1">Added ({sync.added_details.length}):</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {sync.added_details.map((v, i) => (
+                      <li key={i} className="text-green-600">{v.title}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {sync.updated_details?.length > 0 && (
+                <div>
+                  <p className="font-semibold text-blue-700 mb-1">Updated ({sync.updated_details.length}):</p>
+                  {sync.updated_details.map((v, i) => (
+                    <div key={i} className="mb-2 p-2 bg-blue-50 rounded">
+                      <p className="font-medium text-blue-800">{v.title}</p>
+                      {Object.entries(v.fields || {}).map(([field, val]) => (
+                        <p key={field} className="text-gray-600 ml-2">
+                          <span className="font-medium">{field}:</span>{' '}
+                          <span className="text-red-500 line-through">{val.old ?? 'N/A'}</span>
+                          {' \u2192 '}
+                          <span className="text-green-600 font-medium">{val.new}</span>
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {sync.removed_details?.length > 0 && (
+                <div>
+                  <p className="font-semibold text-red-700 mb-1">Removed ({sync.removed_details.length}):</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {sync.removed_details.map((v, i) => (
+                      <li key={i} className="text-red-600">{v.title}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function SyncHistoryTable({ history }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Timestamp</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Scraped</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-green-600">Added</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-blue-600">Updated</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-red-600">Removed</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Active</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {history.map((s, i) => (
+            <SyncDetailRow key={i} sync={s} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function SyncStatus({ syncStatus, onSyncComplete }) {
   const [syncing, setSyncing] = useState(false);
   const [stage, setStage] = useState('');
@@ -172,17 +263,17 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
               <p className="text-xs text-gray-500">Last Sync</p>
               <p className="font-semibold text-sm">{new Date(last.timestamp).toLocaleString()}</p>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded">
-              <p className="text-xs text-green-600">Added</p>
-              <p className="font-semibold text-xl text-green-700">{last.added}</p>
+            <div className={`text-center p-3 rounded ${last.added ? 'bg-green-50' : 'bg-gray-50 opacity-50'}`}>
+              <p className={`text-xs ${last.added ? 'text-green-600' : 'text-gray-400'}`}>Added</p>
+              <p className={`font-semibold text-xl ${last.added ? 'text-green-700' : 'text-gray-400'}`}>{last.added}</p>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded">
-              <p className="text-xs text-blue-600">Updated</p>
-              <p className="font-semibold text-xl text-blue-700">{last.updated}</p>
+            <div className={`text-center p-3 rounded ${last.updated ? 'bg-blue-50' : 'bg-gray-50 opacity-50'}`}>
+              <p className={`text-xs ${last.updated ? 'text-blue-600' : 'text-gray-400'}`}>Updated</p>
+              <p className={`font-semibold text-xl ${last.updated ? 'text-blue-700' : 'text-gray-400'}`}>{last.updated}</p>
             </div>
-            <div className="text-center p-3 bg-red-50 rounded">
-              <p className="text-xs text-red-600">Removed</p>
-              <p className="font-semibold text-xl text-red-700">{last.removed}</p>
+            <div className={`text-center p-3 rounded ${last.removed ? 'bg-red-50' : 'bg-gray-50 opacity-50'}`}>
+              <p className={`text-xs ${last.removed ? 'text-red-600' : 'text-gray-400'}`}>Removed</p>
+              <p className={`font-semibold text-xl ${last.removed ? 'text-red-700' : 'text-gray-400'}`}>{last.removed}</p>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded">
               <p className="text-xs text-gray-500">Total Active</p>
@@ -219,69 +310,21 @@ function SyncStatus({ syncStatus, onSyncComplete }) {
               ))}
             </div>
           )}
-          {autoLog.sync_history?.length > 0 && (
+          {autoLog.sync_history?.length > 0 ? (
             <div>
               <p className="text-sm font-medium text-gray-600 mb-2">Automated Sync History:</p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Timestamp</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Scraped</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-green-600">Added</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-blue-600">Updated</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-red-600">Removed</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Active</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {autoLog.sync_history.map((s, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        <td className="px-4 py-2">{new Date(s.timestamp).toLocaleString()}</td>
-                        <td className="px-4 py-2 text-center">{s.total_scraped}</td>
-                        <td className="px-4 py-2 text-center text-green-600">+{s.added}</td>
-                        <td className="px-4 py-2 text-center text-blue-600">{s.updated}</td>
-                        <td className="px-4 py-2 text-center text-red-600">-{s.removed}</td>
-                        <td className="px-4 py-2 text-center font-medium">{s.total_active}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SyncHistoryTable history={autoLog.sync_history} />
             </div>
+          ) : (
+            <p className="text-gray-400 text-sm mt-2">No automated syncs yet. The scheduler runs every {autoLog.sync_interval_hours} hours.</p>
           )}
         </div>
       )}
 
       <div className="bg-white rounded-lg shadow p-5">
-        <h3 className="font-semibold text-gray-700 mb-4">Sync History</h3>
+        <h3 className="font-semibold text-gray-700 mb-4">Sync History (All)</h3>
         {history.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Timestamp</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Scraped</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-green-600">Added</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-blue-600">Updated</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-red-600">Removed</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Active</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {history.map((s, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{new Date(s.timestamp).toLocaleString()}</td>
-                    <td className="px-4 py-2 text-center">{s.total_scraped}</td>
-                    <td className="px-4 py-2 text-center text-green-600">+{s.added}</td>
-                    <td className="px-4 py-2 text-center text-blue-600">{s.updated}</td>
-                    <td className="px-4 py-2 text-center text-red-600">-{s.removed}</td>
-                    <td className="px-4 py-2 text-center font-medium">{s.total_active}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SyncHistoryTable history={history} />
         ) : (
           <p className="text-gray-400 text-center py-8">No sync history yet.</p>
         )}

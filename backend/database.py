@@ -31,7 +31,7 @@ class Database:
             [("vin", ASCENDING), ("timestamp", DESCENDING)]
         )
 
-    def sync_vehicles(self, scraped_vehicles: list[dict]) -> dict:
+    def sync_vehicles(self, scraped_vehicles: list[dict], source: str = "manual") -> dict:
         """
         Compare scraped data with DB:
         - Insert new vehicles (VIN not in DB)
@@ -41,6 +41,9 @@ class Database:
         timestamp = datetime.now(timezone.utc)
         scraped_vins = set()
         added = updated = removed = unchanged = 0
+        added_details = []
+        updated_details = []
+        removed_details = []
 
         for vehicle in scraped_vehicles:
             vin = vehicle.get("vin")
@@ -57,6 +60,7 @@ class Database:
                 vehicle["created_at"] = timestamp
                 self.vehicles.insert_one(vehicle)
                 added += 1
+                added_details.append({"title": vehicle.get("title", vin)})
                 logger.info(f"Added new vehicle: {vin}")
 
                 if vehicle.get("price"):
@@ -66,6 +70,18 @@ class Database:
                 if changes:
                     if "price" in changes and vehicle.get("price"):
                         self._record_price(vin, vehicle["price"], timestamp)
+
+                    # Track what changed for this vehicle
+                    change_info = {"title": existing.get("title", vin), "fields": {}}
+                    for field in changes:
+                        if field in ("last_seen", "status"):
+                            continue
+                        change_info["fields"][field] = {
+                            "old": existing.get(field),
+                            "new": changes[field],
+                        }
+                    if change_info["fields"]:
+                        updated_details.append(change_info)
 
                     changes["last_seen"] = timestamp
                     changes["status"] = "active"
@@ -87,16 +103,21 @@ class Database:
                     {"$set": {"status": "removed", "removed_at": timestamp}}
                 )
                 removed += 1
+                removed_details.append({"title": db_vehicle.get("title", db_vehicle["vin"])})
                 logger.info(f"Marked vehicle as removed: {db_vehicle['vin']}")
 
         sync_summary = {
             "timestamp": timestamp,
+            "source": source,
             "total_scraped": len(scraped_vehicles),
             "added": added,
             "updated": updated,
             "removed": removed,
             "unchanged": unchanged,
             "total_active": self.vehicles.count_documents({"status": "active"}),
+            "added_details": added_details,
+            "updated_details": updated_details,
+            "removed_details": removed_details,
         }
         self.sync_logs.insert_one(sync_summary)
         logger.info(f"Sync complete: {sync_summary}")
@@ -180,9 +201,10 @@ class Database:
     def get_last_sync(self) -> Optional[dict]:
         return self.sync_logs.find_one({}, {"_id": 0}, sort=[("timestamp", DESCENDING)])
 
-    def get_sync_history(self, limit=10) -> list[dict]:
+    def get_sync_history(self, limit=10, source=None) -> list[dict]:
+        query = {"source": source} if source else {}
         return list(
-            self.sync_logs.find({}, {"_id": 0}).sort("timestamp", DESCENDING).limit(limit)
+            self.sync_logs.find(query, {"_id": 0}).sort("timestamp", DESCENDING).limit(limit)
         )
 
     # ── Stats ─────────────────────────────────────────────────────────
